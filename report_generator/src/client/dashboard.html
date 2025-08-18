@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Risk Assessment Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        /* Submit form styling */
+        .submit-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .submit-form textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+        .submit-btn {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        .submit-btn:hover { background: #45a049; }
+        .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
+        
+        /* Job info */
+        .job-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        /* Expert cards */
+        .experts-panel { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            margin-bottom: 20px;
+            display: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .expert-card { 
+            display: inline-block; 
+            background: #e3f2fd; 
+            padding: 10px; 
+            margin: 5px; 
+            border-radius: 4px; 
+        }
+        
+        /* Progress */
+        .progress-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .progress-bar { 
+            background: #e0e0e0; 
+            height: 30px; 
+            border-radius: 15px; 
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-fill { 
+            background: #4CAF50; 
+            height: 100%; 
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        /* Logs */
+        .logs-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .log-entry { 
+            padding: 8px 12px; 
+            margin: 4px 0; 
+            background: #f5f5f5; 
+            border-radius: 4px;
+            font-size: 14px;
+            border-left: 4px solid #ddd;
+        }
+        .log-entry.coordinator { border-left-color: #4CAF50; background: #e8f5e9; }
+        .log-entry.expert { border-left-color: #2196F3; background: #e3f2fd; }
+        .log-entry.http { border-left-color: #ccc; color: #666; font-size: 12px; }
+        .log-entry.status { border-left-color: #ff9800; background: #fff3e0; font-weight: bold; }
+        .log-entry.error { border-left-color: #f44336; background: #ffebee; color: #c62828; }
+        
+        .timestamp { color: #666; font-size: 12px; margin-right: 8px; }
+        
+        /* Status badge */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-pending { background: #ffc107; color: #000; }
+        .status-running { background: #2196F3; color: white; }
+        .status-completed { background: #4CAF50; color: white; }
+        .status-failed { background: #f44336; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 SWIFT Risk Assessment Dashboard</h1>
+        
+        <!-- Submit Panel -->
+        <div class="submit-panel">
+            <h2>Submit New Assessment</h2>
+            <form class="submit-form" id="submitForm">
+                <textarea id="queryInput" placeholder="Enter your risk assessment query here...">Perform a comprehensive SWIFT risk assessment for our e-commerce platform's authentication system, focusing on multi-factor authentication vulnerabilities.</textarea>
+                
+                <div style="margin-top: 10px;">
+                    <label>
+                        <input type="checkbox" id="generateExperts"> Generate new experts
+                    </label>
+                    <label style="margin-left: 20px;">
+                        Max messages: <input type="number" id="maxMessages" value="20" min="5" max="50" style="width: 60px;">
+                    </label>
+                </div>
+                
+                <button type="submit" class="submit-btn" id="submitBtn">Submit Assessment</button>
+            </form>
+            
+            <div class="job-info" id="jobInfo">
+                <strong>Job ID:</strong> <span id="jobId"></span><br>
+                <strong>Status:</strong> <span class="status-badge" id="statusBadge"></span>
+            </div>
+        </div>
+        
+        <!-- Progress -->
+        <div class="progress-container" id="progressContainer" style="display: none;">
+            <h3>Progress</h3>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress" style="width: 0%">0%</div>
+            </div>
+            <div style="margin-top: 10px; color: #666;">
+                <span id="progressText">Waiting to start...</span>
+            </div>
+        </div>
+        
+        <!-- Experts Panel -->
+        <div class="experts-panel" id="expertsPanel">
+            <h3>Expert Team</h3>
+            <div id="expertsList"></div>
+        </div>
+        
+        <!-- Logs -->
+        <div class="logs-panel">
+            <h3>Live Updates</h3>
+            <div id="logs"></div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let currentJobId = null;
+        
+        const form = document.getElementById('submitForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const jobInfo = document.getElementById('jobInfo');
+        const logsDiv = document.getElementById('logs');
+        const progressBar = document.getElementById('progress');
+        const progressText = document.getElementById('progressText');
+        const progressContainer = document.getElementById('progressContainer');
+        
+        // Handle form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const query = document.getElementById('queryInput').value;
+            const generateExperts = document.getElementById('generateExperts').checked;
+            const maxMessages = parseInt(document.getElementById('maxMessages').value);
+            
+            if (!query.trim()) {
+                alert('Please enter a query');
+                return;
+            }
+            
+            // Disable submit button
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+            
+            try {
+                // Submit the assessment
+                const response = await fetch('http://localhost:8000/api/assessments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        generate_experts: generateExperts,
+                        max_messages: maxMessages
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                currentJobId = result.job_id;
+                
+                // Show job info
+                document.getElementById('jobId').textContent = currentJobId;
+                document.getElementById('statusBadge').textContent = result.status;
+                document.getElementById('statusBadge').className = `status-badge status-${result.status}`;
+                jobInfo.style.display = 'block';
+                progressContainer.style.display = 'block';
+                
+                // Clear previous logs
+                logsDiv.innerHTML = '';
+                
+                // Connect to WebSocket for this job
+                connectWebSocket(currentJobId);
+                
+                submitBtn.textContent = 'Submit Another';
+                
+            } catch (error) {
+                alert('Error submitting assessment: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Assessment';
+            }
+        });
+        
+        function connectWebSocket(jobId) {
+            // Close existing connection if any
+            if (ws) {
+                ws.close();
+            }
+            
+            // Connect to job-specific WebSocket
+            ws = new WebSocket(`ws://localhost:8000/ws/progress/${jobId}`);
+            
+            ws.onopen = () => {
+                addLog('Connected to live updates', 'status');
+                submitBtn.disabled = false;
+            };
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleEvent(data);
+            };
+            
+            ws.onerror = (error) => {
+                addLog('WebSocket error: ' + error, 'error');
+            };
+            
+            ws.onclose = () => {
+                addLog('Disconnected from live updates', 'status');
+            };
+        }
+        
+        function handleEvent(data) {
+            switch(data.type) {
+                case 'approved_experts':
+                    displayExperts(data.data.experts);
+                    addLog(`Loaded ${data.data.count} experts`, 'status');
+                    break;
+                    
+                case 'coordinator_analyzing':
+                    updateProgress(data.data.progress_percentage, data.data.current_message, data.data.max_messages);
+                    addLog(`🎯 Analyzing: Message ${data.data.current_message}/${data.data.max_messages}`, 'coordinator');
+                    break;
+                    
+                case 'coordinator_decision':
+                    addLog(`🧠 Decision: ${data.data.decision}`, 'coordinator');
+                    break;
+                    
+                case 'coordinator_reasoning':
+                    addLog(`💭 ${data.data.reasoning}`, 'coordinator');
+                    break;
+                    
+                case 'coordinator_keywords':
+                    addLog(`🔑 Keywords: ${data.data.keywords.join(', ')}`, 'coordinator');
+                    break;
+                    
+                case 'expert_starting':
+                    addLog(`🔄 ${data.data.expert_name} starting deliberation...`, 'expert');
+                    break;
+                    
+                case 'expert_lobe_response':
+                    const icon = data.data.lobe_type === 'creative' ? '🎨' : '🧠';
+                    addLog(`${icon} ${data.data.lobe_type} (${data.data.expert_name}): ${data.data.response_preview}`, 'expert');
+                    break;
+                    
+                case 'http_request':
+                    if (data.data.status.includes('200')) {
+                        addLog(`📡 ${data.data.method} ${data.data.url}`, 'http');
+                    }
+                    break;
+                    
+                case 'status_change':
+                    const badge = document.getElementById('statusBadge');
+                    badge.textContent = data.data.status;
+                    badge.className = `status-badge status-${data.data.status}`;
+                    addLog(`Status changed to: ${data.data.status} - ${data.data.message}`, 'status');
+                    
+                    if (data.data.status === 'completed') {
+                        progressText.textContent = 'Assessment completed!';
+                        // Fetch and display the result
+                        fetchResult(currentJobId);
+                    } else if (data.data.status === 'failed') {
+                        progressText.textContent = 'Assessment failed!';
+                    }
+                    break;
+                    
+                case 'team_status':
+                    addLog(`${data.data.icon} ${data.data.message}`, 'status');
+                    break;
+                    
+                case 'error':
+                    addLog(`❌ Error: ${data.data.error}`, 'error');
+                    break;
+                    
+                case 'log_message':
+                    addLog(data.data.message, 'log');
+                    break;
+            }
+        }
+        
+        function displayExperts(experts) {
+            const panel = document.getElementById('expertsPanel');
+            const list = document.getElementById('expertsList');
+            
+            panel.style.display = 'block';
+            list.innerHTML = experts.map(expert => 
+                `<div class="expert-card">
+                    <strong>${expert.name}</strong><br>
+                    <small style="color: #666;">${expert.keywords.slice(0, 3).join(', ')}...</small>
+                </div>`
+            ).join('');
+        }
+        
+        function updateProgress(percentage, current, max) {
+            progressBar.style.width = `${percentage}%`;
+            progressBar.textContent = `${Math.round(percentage)}%`;
+            progressText.textContent = `Processing message ${current} of ${max}`;
+        }
+        
+        function addLog(message, type) {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            
+            const timestamp = document.createElement('span');
+            timestamp.className = 'timestamp';
+            timestamp.textContent = new Date().toLocaleTimeString();
+            
+            entry.appendChild(timestamp);
+            entry.appendChild(document.createTextNode(message));
+            
+            logsDiv.insertBefore(entry, logsDiv.firstChild);
+            
+            // Keep only last 100 logs
+            while (logsDiv.children.length > 100) {
+                logsDiv.removeChild(logsDiv.lastChild);
+            }
+        }
+        
+        async function fetchResult(jobId) {
+            try {
+                const response = await fetch(`http://localhost:8000/api/assessments/${jobId}`);
+                const data = await response.json();
+                
+                if (data.result) {
+                    // Create a panel for the result
+                    const resultPanel = document.createElement('div');
+                    resultPanel.className = 'submit-panel';
+                    resultPanel.style.marginTop = '20px';
+                    resultPanel.innerHTML = `
+                        <h3>Assessment Result</h3>
+                        <pre style="white-space: pre-wrap; background: #f5f5f5; padding: 15px; border-radius: 4px; max-height: 500px; overflow-y: auto;">${data.result}</pre>
+                    `;
+                    document.querySelector('.container').appendChild(resultPanel);
+                }
+            } catch (error) {
+                console.error('Error fetching result:', error);
+            }
+        }
+    </script>
+</body>
+</html>
