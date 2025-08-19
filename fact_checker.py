@@ -7,6 +7,7 @@ from typing import Dict, Set, List, Tuple, Any
 from datetime import datetime
 from dotenv import load_dotenv
 from itertools import product
+from enum import Enum
 
 # Import from your ABA package
 from aba_pkg.baba import Literal, LiteralType, Rule, BipolarABA
@@ -36,6 +37,10 @@ EDGE_BATCH_SIZE = 256  # Batch size for edge classification
 CONFIDENCE_THRESHOLD = 0.575  # Minimum confidence for edge inclusion
 
 # ===========================
+def json_default(o):
+    if isinstance(o, Enum):
+        return o.name  # e.g., "FACT", "ASSUMPTION"
+    return str(o)      # fallback
 
 class FactChecker:
     """Main fact checking pipeline"""
@@ -612,7 +617,7 @@ class FactChecker:
         
         os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
         with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-            json.dump(output_data, f, indent=2)
+            json.dump(output_data, f, indent=2, default=json_default)
         
         print(f"✅ Results saved to {OUTPUT_FILE}")
     
